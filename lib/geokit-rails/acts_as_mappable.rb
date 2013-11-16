@@ -346,9 +346,22 @@ module Geokit
           sw,ne = bounds.sw, bounds.ne
           lng_sql = bounds.crosses_meridian? ? "(#{qualified_lng_column_name}<#{ne.lng} OR #{qualified_lng_column_name}>#{sw.lng})" : "#{qualified_lng_column_name}>#{sw.lng} AND #{qualified_lng_column_name}<#{ne.lng}"
           bounds_sql = "#{qualified_lat_column_name}>#{sw.lat} AND #{qualified_lat_column_name}<#{ne.lat} AND #{lng_sql}"
-          options[:conditions] = merge_conditions(options[:conditions], bounds_sql)
+          options[:conditions] = merge_conditions(options[:conditions], bounds_sql)  #oops rails 2.1, see below.
         end
-
+        # this is from Rails 2.1 backported. start{
+        def merge_conditions(*conditions)
+          segments = []
+  
+          conditions.each do |condition|
+            unless condition.blank?
+              sql = sanitize_sql(condition)
+              segments << sql unless sql.blank?
+            end
+          end
+  
+          "(#{segments.join(') AND (')})" unless segments.empty?
+        end
+        # } end backport
         # Extracts the origin instance out of the options if it exists and returns
         # it.  If there is no origin, looks for latitude and longitude values to 
         # create an origin.  The side-effect of the method is to remove these 
